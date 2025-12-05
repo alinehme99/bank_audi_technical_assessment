@@ -115,9 +115,17 @@ void main() {
 
     group('loadMoreUsers', () {
       setUp(() async {
-        // Setup initial users first
+        // Setup initial users first - use full page to enable pagination
+        final initialUsers = List.generate(10, (index) => User(
+          id: index + 1,
+          email: 'user${index + 1}@example.com',
+          firstName: 'User${index + 1}',
+          lastName: 'Test',
+          avatar: 'https://example.com/avatar${index + 1}.jpg',
+        ));
+        
         when(() => mockRepository.getCachedUsers())
-            .thenAnswer((_) async => testUsers);
+            .thenAnswer((_) async => initialUsers);
         when(() => mockRepository.isCacheValid())
             .thenAnswer((_) async => true);
         await provider.loadInitialUsers();
@@ -128,11 +136,11 @@ void main() {
         // Arrange
         // Return 10 users to simulate a full page, so hasMore remains true
         final fullPageUsers = List.generate(10, (index) => User(
-          id: index + 3,
-          email: 'user${index + 3}@example.com',
-          firstName: 'User${index + 3}',
+          id: index + 11, // Start from ID 11 since we already have 10 cached
+          email: 'user${index + 11}@example.com',
+          firstName: 'User${index + 11}',
           lastName: 'Test',
-          avatar: 'https://example.com/avatar${index + 3}.jpg',
+          avatar: 'https://example.com/avatar${index + 11}.jpg',
         ));
         
         when(() => mockRepository.getUsers(2, 10))
@@ -143,8 +151,8 @@ void main() {
         // Act
         await provider.loadMoreUsers();
 
-        // Assert
-        expect(provider.visibleUsers.length, 12); // 2 initial + 10 more
+        // Assert - should now have 20 users (10 initial + 10 more)
+        expect(provider.visibleUsers.length, 20);
         expect(provider.isLoadingMore, false);
         expect(provider.hasMore, true);
         verify(() => mockRepository.getUsers(2, 10)).called(1);
@@ -156,7 +164,13 @@ void main() {
         when(() => mockRepository.getUsers(any(), any()))
             .thenAnswer((_) async {
           await Future.delayed(const Duration(milliseconds: 100));
-          return [];
+          return List.generate(10, (index) => User(
+            id: index + 11,
+            email: 'user${index + 11}@example.com',
+            firstName: 'User${index + 11}',
+            lastName: 'Test',
+            avatar: 'https://example.com/avatar${index + 11}.jpg',
+          ));
         });
 
         // Act
@@ -165,8 +179,8 @@ void main() {
 
         await Future.wait([future1, future2]);
 
-        // Assert
-        verify(() => mockRepository.getUsers(any(), any())).called(1);
+        // Assert - should only call getUsers once due to loading state protection
+        verify(() => mockRepository.getUsers(2, 10)).called(1);
       });
     });
 
