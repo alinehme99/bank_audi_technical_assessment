@@ -7,24 +7,44 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mocktail/mocktail.dart';
+import 'package:provider/provider.dart';
+import 'package:bank_audi_technical_assessment/features/users/presentation/providers/users_provider.dart';
+import 'package:bank_audi_technical_assessment/features/users/presentation/pages/users_list_page.dart';
+import 'package:bank_audi_technical_assessment/features/users/domain/repositories/users_repository.dart';
 
-import 'package:bank_audi_technical_assessment/main.dart';
+class MockUsersRepository extends Mock implements UsersRepository {}
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
+  late MockUsersRepository mockRepository;
+
+  setUp(() {
+    mockRepository = MockUsersRepository();
+  });
+
+  testWidgets('App should load users list page', (WidgetTester tester) async {
+    // Arrange
+    when(() => mockRepository.getCachedUsers()).thenAnswer((_) async => []);
+    when(() => mockRepository.isCacheValid()).thenAnswer((_) async => false);
+    when(() => mockRepository.getUsers(any(), any())).thenAnswer((_) async => []);
+
     // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+    await tester.pumpWidget(
+      ChangeNotifierProvider(
+        create: (_) => UsersProvider(mockRepository),
+        child: const MaterialApp(
+          home: UsersListPage(),
+        ),
+      ),
+    );
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+    // Wait for the app to initialize
+    await tester.pumpAndSettle();
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
-
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    // Verify that the app loads with the correct title
+    expect(find.text('ReqRes Users'), findsOneWidget);
+    
+    // Verify that the search field is present
+    expect(find.byType(TextField), findsOneWidget);
   });
 }
